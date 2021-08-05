@@ -7,6 +7,8 @@ import numpy as np
 
 
 if __name__ == '__main__':
+    RENDER = False
+
     env = gym.make('LunarLander-v2')
     env.seed(0)
     print('State shape: ', env.observation_space.shape)
@@ -40,11 +42,12 @@ if __name__ == '__main__':
     filename = 'lunar_lander_2020.png'
     plot_learning_curve(x, scores, eps_history, filename)
 
-    # Render the final Agent's behaviour
-    env = wrappers.Monitor(env, "./gym-results",force=True)
-    observation = env.reset()
-    for _ in range(1000):
-        action = agent.choose_action(observation)
-        observation_, reward, done, info = env.step(action)
-        if done: break
-    env.close()
+    if RENDER:
+        # Render the final Agent's behaviour
+        env = wrappers.Monitor(env, "./gym-results",force=True)
+        observation = env.reset()
+        for _ in range(1000):
+            action = agent.choose_action(observation)
+            observation_, reward, done, info = env.step(action)
+            if done: break
+        env.close()
