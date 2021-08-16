@@ -47,7 +47,7 @@ class CNNQNetwork(nn.Module):
 
         self.conv1   = nn.Conv2d(1, self.filter1,8, stride=4)
         self.conv2   = nn.Conv2d(self.filter1, self.filter2,4, stride=2)
-        self.conv3   = nn.Conv2d(self.filter1, self.filter2,3, stride=1)
+        self.conv3   = nn.Conv2d(self.filter2,32,3, stride=1)
         
         if 'neurons' not in locals():
           neurons = self.getNeuronNum(torch.zeros(1,1,*input_dims))
@@ -72,8 +72,9 @@ class CNNQNetwork(nn.Module):
 
     def getNeuronNum(self, x):
         # Pass an arbitrary input x through the network to see how many neurons are needed in the linear layer
-        x = self.maxpool(F.relu(self.conv1(x)))
-        x = self.maxpool(F.relu(self.conv2(x)))
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
         x = torch.flatten(x, 1)
         return x.numel()
 

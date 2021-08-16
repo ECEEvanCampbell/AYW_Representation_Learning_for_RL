@@ -55,7 +55,7 @@ if __name__ == '__main__':
         scores.append(score)
         eps_history.append(agent.epsilon)
 
-        avg_score = np.mean(scores[-100:])
+        avg_score = np.mean(scores[-10:])
 
         print('episode ', i, 'score %.2f' % score, 
                 'average score %.2f' % avg_score,
