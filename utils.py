@@ -45,12 +45,13 @@ class CNNQNetwork(nn.Module):
         self.filter2   = filter2
         self.n_actions  = n_actions
 
-        self.conv1   = nn.Conv2d(1, self.filter1,8, stride=4)
+        self.conv1   = nn.Conv2d(input_dims[0], self.filter1,8, stride=4)
         self.conv2   = nn.Conv2d(self.filter1, self.filter2,4, stride=2)
         self.conv3   = nn.Conv2d(self.filter2,32,3, stride=1)
         
         if 'neurons' not in locals():
-          neurons = self.getNeuronNum(torch.zeros(1,1,*input_dims))
+          neurons = self.getNeuronNum(torch.zeros(input_dims).unsqueeze(0))
+
         self.fc1     = nn.Linear(neurons, fc1n)
         self.fc2     = nn.Linear(fc1n, self.n_actions)
         
@@ -156,9 +157,7 @@ class Agent():
 
         state_batch = torch.tensor(self.state_memory[batch]).to(self.Q_eval.device)
         new_state_batch = torch.tensor(self.new_state_memory[batch]).to(self.Q_eval.device)
-        if self.modelname == "CNN":
-          state_batch = state_batch.unsqueeze(1)
-          new_state_batch = new_state_batch.unsqueeze(1)
+        
         reward_batch = torch.tensor(self.reward_memory[batch]).to(self.Q_eval.device)
         terminal_batch = torch.tensor(self.terminal_memory[batch]).to(self.Q_eval.device)
 

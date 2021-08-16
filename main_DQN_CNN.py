@@ -11,6 +11,8 @@ import os
 
 if __name__ == '__main__':
     RENDER = False
+    num_frames = 3
+    update_frequency=1000
 
     log_dir = "/tmp/gym/"
 
@@ -20,37 +22,41 @@ if __name__ == '__main__':
     img = env.render(mode='rgb_array')
     img = cv2.resize(img, (img.shape[0]//5, img.shape[1]//5))
     img = np.sum(img, axis=2)
-    print('State shape: ', img.shape)
+    print('State shape: ', (num_frames, img.shape) )
     print('Number of actions: ', env.action_space.n)
 
-    observation_ = np.float32(img)
-
+    # 3 samples points
+    
 
     modelname = "CNN"
     agent = Agent(modelname,gamma = 0.999, epsilon=1.0, batch_size = 64, n_actions=4,
-            eps_end = 0.1, input_dims=img.shape, lr=0.00005,max_mem_size=10000)
+            eps_end = 0.1, input_dims=(num_frames, *img.shape), lr=0.00001,max_mem_size=10000)
     scores, eps_history = [], []
-    n_games = 500
-
+    n_games = 2000
+    frames = 0
     for i in range(n_games):
         score = 0
         done = False
+        observation_ = np.zeros((num_frames,img.shape[0], img.shape[1]), dtype=np.float32)
         _ = env.reset()
         img = env.render(mode='rgb_array')
         img = cv2.resize(img, (img.shape[0]//5, img.shape[1]//5))
         img = np.sum(img, axis=2, dtype=np.float32)
-        observation = img
+        observation = observation_
         while not done:
+            frames += 1
             action = agent.choose_action(observation)
             # We now assume the kinematics of the lander are unobservable
             _, reward, done, info = env.step(action)
             img = env.render(mode='rgb_array')
             img = cv2.resize(img, (img.shape[0]//5, img.shape[1]//5))
             img = np.sum(img, axis=2, dtype=np.float32)
-            observation_ = img
+            observation_ = np.concatenate((np.expand_dims(img,0), observation[1:,:,:]))
             score += reward
             agent.store_transitions(observation, action, reward, observation_, done)
             agent.learn()
+            if frames % update_frequency:
+                agent.update_target()
             observation = observation_
         scores.append(score)
         eps_history.append(agent.epsilon)
