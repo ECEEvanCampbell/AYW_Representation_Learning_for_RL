@@ -51,7 +51,7 @@ if __name__ == '__main__':
             img = env.render(mode='rgb_array')
             img = cv2.resize(img, (img.shape[0]//5, img.shape[1]//5))
             img = np.sum(img, axis=2, dtype=np.float32)
-            observation_ = np.concatenate((np.expand_dims(img,0), observation[1:,:,:]))
+            observation_ = np.concatenate((np.expand_dims(img,0), observation[:-1,:,:])) # New frame + 2 newest frames
             score += reward
             agent.store_transitions(observation, action, reward, observation_, done)
             agent.learn()
