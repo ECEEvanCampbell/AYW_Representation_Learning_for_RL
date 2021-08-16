@@ -5,9 +5,9 @@ import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
 
-class DeepQNetwork(nn.Module):
+class MLPQNetwork(nn.Module):
     def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions):
-        super(DeepQNetwork, self).__init__()
+        super(MLPQNetwork, self).__init__()
 
         self.input_dims = input_dims
         self.fc1_dims   = fc1_dims
@@ -31,9 +31,50 @@ class DeepQNetwork(nn.Module):
         return actions
 
 
+
+class CNNQNetwork(nn.Module):
+    def __init__(self, lr, input_dims, filter1, filter2, fc1n, n_actions):
+        super(CNNQNetwork, self).__init__()
+
+        self.input_dims = input_dims
+        self.filter1   = filter1
+        self.filter2   = filter2
+        self.n_actions  = n_actions
+
+        self.conv1   = nn.Conv2d(1, self.filter1,7, stride=2)
+        self.conv2   = nn.Conv2d(self.filter1, self.filter2,5, stride=1)
+        self.maxpool = nn.MaxPool2d(4)
+        if 'neurons' not in locals():
+          neurons = self.getNeuronNum(torch.zeros(1,1,*input_dims))
+        self.fc1     = nn.Linear(neurons, fc1n)
+        self.fc2     = nn.Linear(fc1n, self.n_actions)
+        
+        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        self.loss      = nn.MSELoss()
+
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
+    def forward(self, state):
+        
+        x = self.maxpool(F.relu(self.conv1(state)))
+        x = self.maxpool(F.relu(self.conv2(x)))
+        x = torch.flatten(x, 1)
+        x = F.relu(self.fc1(x))
+        actions = self.fc2(x)
+        
+        return actions
+    def getNeuronNum(self, x):
+        x = self.maxpool(F.relu(self.conv1(x)))
+        x = self.maxpool(F.relu(self.conv2(x)))
+        x = torch.flatten(x, 1)
+        return x.numel()
+
+
 class Agent():
-    def __init__(self, gamma, epsilon, lr, input_dims, batch_size, n_actions,
+    def __init__(self, modelname, gamma, epsilon, lr, input_dims, batch_size, n_actions,
             max_mem_size=100000, eps_end=0.01, eps_dec=1e-4):
+        self.modelname = modelname
         self.gamma = gamma
         self.epsilon = epsilon
         self.eps_min = eps_end
@@ -43,10 +84,12 @@ class Agent():
         self.mem_size = max_mem_size
         self.batch_size = batch_size
         self.mem_cntr = 0
-
-        self.Q_eval = DeepQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims, 
+        if modelname == "MLP":
+          self.Q_eval = MLPQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims, 
                                     fc1_dims=256, fc2_dims=256)
-        
+        elif modelname == "CNN":
+          self.Q_eval = CNNQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims,
+                                    filter1=32, filter2=32, fc1n=32)
         self.state_memory     = np.zeros((self.mem_size, *input_dims), dtype=np.float32)
         self.new_state_memory = np.zeros((self.mem_size, *input_dims), dtype=np.float32)
 
@@ -68,7 +111,12 @@ class Agent():
     def choose_action(self, observation):
         if np.random.random() > self.epsilon:
             # Take best action
+            
             state = torch.tensor([observation]).to(self.Q_eval.device)
+            if len(state.shape) == 2:
+                state = state.unsqueeze(1) # give colour channel
+            if len(state.shape) == 3:
+                state = state.unsqueeze(1) # give batch id
             actions = self.Q_eval.forward(state)
             action = torch.argmax(actions).item()
         else:
@@ -90,6 +138,9 @@ class Agent():
 
         state_batch = torch.tensor(self.state_memory[batch]).to(self.Q_eval.device)
         new_state_batch = torch.tensor(self.new_state_memory[batch]).to(self.Q_eval.device)
+        if self.modelname == "CNN":
+          state_batch = state_batch.unsqueeze(1)
+          new_state_batch = new_state_batch.unsqueeze(1)
         reward_batch = torch.tensor(self.reward_memory[batch]).to(self.Q_eval.device)
         terminal_batch = torch.tensor(self.terminal_memory[batch]).to(self.Q_eval.device)
 

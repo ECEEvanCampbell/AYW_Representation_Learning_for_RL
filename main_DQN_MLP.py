@@ -3,7 +3,8 @@ from gym import wrappers
 from utils import Agent
 from utils import plot_learning_curve
 import numpy as np
-
+import os
+import torch
 
 
 if __name__ == '__main__':
@@ -13,8 +14,9 @@ if __name__ == '__main__':
     env.seed(0)
     print('State shape: ', env.observation_space.shape)
     print('Number of actions: ', env.action_space.n)
-    agent = Agent(gamma = 0.99, epsilon=1.0, batch_size = 64, n_actions=4,
-            eps_end = 0.01, input_dims=[8], lr=0.001)
+    modelname = "MLP"
+    agent = Agent(modelname,gamma = 0.99, epsilon=1.0, batch_size = 64, n_actions=4,
+        eps_end = 0.01, input_dims=[8], lr=0.001)
     scores, eps_history = [], []
     n_games = 500
 
@@ -39,8 +41,11 @@ if __name__ == '__main__':
                 'epsilon %.2f' %agent.epsilon)
     
     x = [i+1 for i in range(n_games)]
-    filename = 'lunar_lander_2020.png'
+    filename = modelname + '_lunar_lander_2020.png'
     plot_learning_curve(x, scores, eps_history, filename)
+    os.makedirs('/models/',exist_ok=True)
+    torch.save(agent.Q_eval.state_dict(), f'/models/{modelname}Brain_{n_games}.dqn')
+    np.save(f"{modelname}Brain_{n_games}_results.npy", scores)
 
     if RENDER:
         # Render the final Agent's behaviour
