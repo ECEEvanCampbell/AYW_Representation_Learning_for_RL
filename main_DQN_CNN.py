@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
     modelname = "CNN"
     agent = Agent(modelname,gamma = 0.999, epsilon=1.0, batch_size = 64, n_actions=4,
-            eps_end = 0.01, input_dims=img.shape, lr=0.00005,max_mem_size=10000)
+            eps_end = 0.1, input_dims=img.shape, lr=0.00005,max_mem_size=10000)
     scores, eps_history = [], []
     n_games = 500
 

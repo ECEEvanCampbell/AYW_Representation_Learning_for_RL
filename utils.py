@@ -19,7 +19,8 @@ class MLPQNetwork(nn.Module):
         self.fc3 = nn.Linear(self.fc2_dims, self.n_actions)
         
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
-        self.loss      = nn.MSELoss()
+        self.loss      = nn.SmoothL1Loss()
+
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.to(self.device)
@@ -32,6 +33,9 @@ class MLPQNetwork(nn.Module):
 
 
 
+
+
+
 class CNNQNetwork(nn.Module):
     def __init__(self, lr, input_dims, filter1, filter2, fc1n, n_actions):
         super(CNNQNetwork, self).__init__()
@@ -41,30 +45,33 @@ class CNNQNetwork(nn.Module):
         self.filter2   = filter2
         self.n_actions  = n_actions
 
-        self.conv1   = nn.Conv2d(1, self.filter1,7, stride=2)
-        self.conv2   = nn.Conv2d(self.filter1, self.filter2,5, stride=1)
-        self.maxpool = nn.MaxPool2d(4)
+        self.conv1   = nn.Conv2d(1, self.filter1,8, stride=4)
+        self.conv2   = nn.Conv2d(self.filter1, self.filter2,4, stride=2)
+        self.conv3   = nn.Conv2d(self.filter1, self.filter2,3, stride=1)
+        
         if 'neurons' not in locals():
           neurons = self.getNeuronNum(torch.zeros(1,1,*input_dims))
         self.fc1     = nn.Linear(neurons, fc1n)
         self.fc2     = nn.Linear(fc1n, self.n_actions)
         
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
-        self.loss      = nn.MSELoss()
+        self.loss      = nn.SmoothL1Loss()
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.to(self.device)
 
     def forward(self, state):
-        
-        x = self.maxpool(F.relu(self.conv1(state)))
-        x = self.maxpool(F.relu(self.conv2(x)))
+        # Get the logits for actions given an input  ''state''
+        x = F.relu(self.conv1(state))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
         x = torch.flatten(x, 1)
         x = F.relu(self.fc1(x))
         actions = self.fc2(x)
-        
         return actions
+
     def getNeuronNum(self, x):
+        # Pass an arbitrary input x through the network to see how many neurons are needed in the linear layer
         x = self.maxpool(F.relu(self.conv1(x)))
         x = self.maxpool(F.relu(self.conv2(x)))
         x = torch.flatten(x, 1)
@@ -73,7 +80,8 @@ class CNNQNetwork(nn.Module):
 
 class Agent():
     def __init__(self, modelname, gamma, epsilon, lr, input_dims, batch_size, n_actions,
-            max_mem_size=100000, eps_end=0.01, eps_dec=1e-4):
+            max_mem_size=100000, eps_end=0.1, eps_dec=5e-5):
+
         self.modelname = modelname
         self.gamma = gamma
         self.epsilon = epsilon
@@ -84,12 +92,21 @@ class Agent():
         self.mem_size = max_mem_size
         self.batch_size = batch_size
         self.mem_cntr = 0
+
         if modelname == "MLP":
-          self.Q_eval = MLPQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims, 
+            self.Q_eval = MLPQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims, 
                                     fc1_dims=256, fc2_dims=256)
+            self.Q_target = MLPQNetwork(self.lr,n_actions=n_actions, input_dims=input_dims, 
+                                    fc1_dims=256, fc2_dims=256)
+
         elif modelname == "CNN":
-          self.Q_eval = CNNQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims,
-                                    filter1=32, filter2=32, fc1n=32)
+            self.Q_eval = CNNQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims,
+                                    filter1=32, filter2=64, fc1n=512)
+            self.Q_target = CNNQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims,
+                                    filter1=32, filter2=64, fc1n=512)
+        # Initialize the target network as the eval network
+        self.Q_target.load_state_dict(self.Q_eval.state_dict())
+
         self.state_memory     = np.zeros((self.mem_size, *input_dims), dtype=np.float32)
         self.new_state_memory = np.zeros((self.mem_size, *input_dims), dtype=np.float32)
 
@@ -147,17 +164,26 @@ class Agent():
         action_batch = self.action_memory[batch]
 
         q_eval = self.Q_eval.forward(state_batch)[batch_index, action_batch]
-        q_next = self.Q_eval.forward(new_state_batch)
+        q_next = self.Q_target.forward(new_state_batch).detach()
         q_next[terminal_batch] = 0.0
 
         q_target = reward_batch + self.gamma * torch.max(q_next, dim=1)[0]
 
         loss = self.Q_eval.loss(q_target, q_eval).to(self.Q_eval.device)
+        
         loss.backward()
+        for params in self.Q_eval.parameters():
+            params.grad.data.clamp_(-1, 1)
+
         self.Q_eval.optimizer.step()
+
 
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min \
             else self.eps_min
+    
+    def update_target(self):
+        self.Q_target.load_state_dict(self.Q_eval.state_dict())
+
 
 
 
