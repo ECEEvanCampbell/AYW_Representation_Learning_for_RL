@@ -46,12 +46,14 @@ if __name__ == "__main__":
 
   dataset = np.zeros((images_to_collect, num_frames, *ideal_shape))
   counter = 0
+  
   while counter < images_to_collect-1:
-
+      initial_frames = 0
       done = False
       _ = env.reset()
       observation = np.zeros((num_frames,img.shape[0], img.shape[1]), dtype=np.float32)
       while not done:
+        
         action = rnd_agent.choose_action()
         _, _, done, _ = env.step(action)
 
@@ -62,9 +64,11 @@ if __name__ == "__main__":
         
         if len(os.listdir(img_dataset_loc)) > images_to_collect:
           break
-        if np.random.rand(1) < 0.1:
+        if np.random.rand(1) < 0.1 and initial_frames > num_frames:
           counter += 1
           dataset[counter,:,:,:] = observation
+
+        initial_frames +=1
 
   np.save(img_dataset_loc + "dataset.npy", dataset)
   print(str(images_to_collect), " images have been collected.")
