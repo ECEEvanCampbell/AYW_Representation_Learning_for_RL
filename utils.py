@@ -47,7 +47,7 @@ class CNNQNetwork(nn.Module):
 
         self.conv1   = nn.Conv2d(input_dims[0], self.filter1,8, stride=4)
         self.conv2   = nn.Conv2d(self.filter1, self.filter2,4, stride=2)
-        self.conv3   = nn.Conv2d(self.filter2,32,3, stride=1)
+        self.conv3   = nn.Conv2d(self.filter2,64,3, stride=1)
         
         if 'neurons' not in locals():
           neurons = self.getNeuronNum(torch.zeros(input_dims).unsqueeze(0))
@@ -103,9 +103,9 @@ class Agent():
 
         elif modelname == "CNN":
             self.Q_eval = CNNQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims,
-                                    filter1=32, filter2=64, fc1n=256)
+                                    filter1=32, filter2=64, fc1n=512)
             self.Q_target = CNNQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims,
-                                    filter1=32, filter2=64, fc1n=256)
+                                    filter1=32, filter2=64, fc1n=512)
         # Initialize the target network as the eval network
         self.Q_target.load_state_dict(self.Q_eval.state_dict())
 
@@ -145,7 +145,7 @@ class Agent():
     
     def learn(self):
         # Our initial memory is zero, so let's start learning when we have filled up at least one batch_size of experience
-        if self.mem_cntr<self.batch_size:
+        if self.mem_cntr<self.batch_size*30:
             return
         
         self.Q_eval.optimizer.zero_grad()
