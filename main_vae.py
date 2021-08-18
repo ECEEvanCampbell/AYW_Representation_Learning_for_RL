@@ -184,7 +184,7 @@ def set_seed(seed=None, seed_torch=True):
 
 
 if __name__ == "__main__":
-
+    LOAD_MODEL = True
     set_seed(seed=2021)
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -198,6 +198,9 @@ if __name__ == "__main__":
     X_validate = X[training_samples:,:,:,:]
 
     vae = ConvVAE(K=20, input_dims = X_train.shape[1:], filter1=32, filter2=64)
+    if LOAD_MODEL:
+      model_location = 'VAE_Checkpoint.pt'
+      vae.load_state_dict(torch.load(model_location))
     train_losses, validation_losses = train_vae(vae, X_train, X_validate, epochs=10, batch_size=64)
     torch.save(vae.state_dict(),'VAE_Checkpoint.pt')
     np.save('train_losses.npy', train_losses)
