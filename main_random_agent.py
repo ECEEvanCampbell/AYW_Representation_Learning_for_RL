@@ -34,17 +34,19 @@ if __name__ == "__main__":
   
   env = gym.make('LunarLander-v2')
   rnd_agent = RandomAgent(n_actions=env.action_space.n)
-
+  ideal_shape = (80, 80)
   images_to_collect = 5000
-  num_frames = 3 
+  num_frames = 4 
   img_dataset_loc = 'dataset/'
   os.makedirs(img_dataset_loc,exist_ok=True)
 
   img = env.render(mode='rgb_array')
-  img = cv2.resize(img, (img.shape[0]//5, img.shape[1]//5))
+  img = cv2.resize(img,  ideal_shape)
   img = np.sum(img, axis=2, dtype=np.float32)
 
-  while len(os.listdir(img_dataset_loc)) < images_to_collect:
+  dataset = np.zeros((images_to_collect, num_frames, *ideal_shape))
+  counter = 0
+  while counter < images_to_collect-1:
 
       done = False
       _ = env.reset()
@@ -54,15 +56,17 @@ if __name__ == "__main__":
         _, _, done, _ = env.step(action)
 
         img = env.render(mode='rgb_array')
-        img = cv2.resize(img, (img.shape[0]//5, img.shape[1]//5))
+        img = cv2.resize(img, ideal_shape)
         img = np.sum(img, axis=2, dtype=np.float32)/765
         observation = np.concatenate((np.expand_dims(img,0), observation[:-1,:,:])) # New frame + 2 newest frames
         
         if len(os.listdir(img_dataset_loc)) > images_to_collect:
           break
         if np.random.rand(1) < 0.1:
-          np.save(img_dataset_loc + str(len(os.listdir(img_dataset_loc))+1) , observation)
+          counter += 1
+          dataset[counter,:,:,:] = observation
 
+  np.save(img_dataset_loc + "dataset.npy", dataset)
   print(str(images_to_collect), " images have been collected.")
 
 
