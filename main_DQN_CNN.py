@@ -30,9 +30,9 @@ if __name__ == '__main__':
 
     modelname = "CNN"
     agent = Agent(modelname,gamma = 0.999, epsilon=1.0, batch_size = 64, n_actions=4,
-            eps_end = 0.05, input_dims=(num_frames, *img.shape), lr=0.0001,max_mem_size=10000)
+            eps_end = 0.05, input_dims=(num_frames, *img.shape), lr=0.00005,max_mem_size=10000)
     scores, eps_history = [], []
-    n_games = 5000
+    n_games = 7500
     frames = 0
     for i in range(n_games):
         score = 0
@@ -50,7 +50,7 @@ if __name__ == '__main__':
             _, reward, done, info = env.step(action)
             img = env.render(mode='rgb_array')
             img = cv2.resize(img, (img.shape[0]//5, img.shape[1]//5))
-            img = np.sum(img, axis=2, dtype=np.float32)
+            img = np.sum(img, axis=2, dtype=np.float32)/765
             observation_ = np.concatenate((np.expand_dims(img,0), observation[:-1,:,:])) # New frame + 2 newest frames
             score += reward
             agent.store_transitions(observation, action, reward, observation_, done)
