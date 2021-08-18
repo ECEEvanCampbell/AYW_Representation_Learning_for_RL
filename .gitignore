@@ -1,2 +1,3 @@
 dataset/*.npy
 gym-results/*
+__pycache__/*
