@@ -24,7 +24,7 @@ class RandomAgent():
 def render_dataset_img(img_dir, img_id):
 
   img = np.load(img_dir + str(img_id) +".npy")
-  plt.imshow(img)
+  plt.imshow(img[0,:,:])
   return 1
 
 
