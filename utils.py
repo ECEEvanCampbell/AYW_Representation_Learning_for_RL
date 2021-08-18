@@ -82,7 +82,7 @@ class CNNQNetwork(nn.Module):
 
 class Agent():
     def __init__(self, modelname, gamma, epsilon, lr, input_dims, batch_size, n_actions,
-            max_mem_size=100000, eps_end=0.1, eps_dec=5e-5):
+            max_mem_size=100000, eps_end=0.05, eps_dec=2.5e-6):
 
         self.modelname = modelname
         self.gamma = gamma
@@ -103,9 +103,9 @@ class Agent():
 
         elif modelname == "CNN":
             self.Q_eval = CNNQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims,
-                                    filter1=32, filter2=64, fc1n=512)
+                                    filter1=32, filter2=64, fc1n=256)
             self.Q_target = CNNQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims,
-                                    filter1=32, filter2=64, fc1n=512)
+                                    filter1=32, filter2=64, fc1n=256)
         # Initialize the target network as the eval network
         self.Q_target.load_state_dict(self.Q_eval.state_dict())
 
