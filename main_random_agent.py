@@ -26,7 +26,7 @@ if __name__ == "__main__":
   
   env = gym.make('LunarLander-v2')
   rnd_agent = RandomAgent(n_actions=env.action_space.n)
-  ideal_shape = (80, 80)
+  ideal_shape = (120,120)
   images_to_collect = 5000
   num_frames = 4 
   img_dataset_loc = 'dataset/'

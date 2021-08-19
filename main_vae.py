@@ -187,9 +187,9 @@ def Transform_Image(_img, _n):
     # Highlight what we care about -- lunar lander.
     _x = _img
     _x = _x * (_x < 0.8) * (_x > 0.4) # Mask anything outside 0.4 < _x < 0.8 
-    _x[50:52, 32:34] = 0 # remove flags
-    _x[50:52, 48:50] = 0
-    _y = _n * _x + _img # highlight items between region, add to original image.
+    #_x[50:52, 32:34] = 0 # remove flags
+    #_x[50:52, 48:50] = 0
+    _y = _x * _n + _img # highlight items between region, add to original image.
 
     return _y
 
@@ -216,7 +216,7 @@ if __name__ == "__main__":
     X_train = X[:training_samples, :, :, :]
     X_validate = X[training_samples:, :, :, :]
 
-    vae = ConvVAE(K=20, input_dims=X_train.shape[1:], filter1=32, filter2=64)
+    vae = ConvVAE(K=18, input_dims=X_train.shape[1:], filter1=32, filter2=64)
     if LOAD_MODEL:
         model_location = 'VAE_Checkpoint_Lunar.pt'
         vae.load_state_dict(torch.load(model_location))

@@ -79,10 +79,59 @@ class CNNQNetwork(nn.Module):
         x = torch.flatten(x, 1)
         return x.numel()
 
+class VAEQNetwork(nn.Module):
+    def __init__(self, lr, input_dims, filter1, filter2, K, fc1n, n_actions):
+        super(VAEQNetwork, self).__init__()
+
+        self.input_dims = input_dims
+        self.filter1   = filter1
+        self.filter2   = filter2
+        self.K         = K
+        self.n_actions  = n_actions
+
+        self.conv1   = nn.Conv2d(input_dims[0], self.filter1,8, stride=4)
+        self.conv2   = nn.Conv2d(self.filter1, self.filter2,4, stride=2)
+        self.conv3   = nn.Conv2d(self.filter2,64,3, stride=1)
+        
+        if 'neurons' not in locals():
+          neurons = self.getNeuronNum(torch.zeros(input_dims).unsqueeze(0))
+
+        self.fc1     = nn.Linear(neurons, self.K)
+        # fc1  = q_fc_mu from vae code
+        self.fc2     = nn.Linear(self.K, fc1n)
+        self.fc3     = nn.Linear(fc1n, self.n_actions)
+        
+        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        self.loss      = nn.SmoothL1Loss()
+
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
+    def forward(self, state):
+        # Get the logits for actions given an input  ''state''
+        x = F.relu(self.conv1(state))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = torch.flatten(x, 1)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        actions = self.fc3(x)
+        return actions
+
+    def getNeuronNum(self, x):
+        # Pass an arbitrary input x through the network to see how many neurons are needed in the linear layer
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = torch.flatten(x, 1)
+        return x.numel()
+
+
+
 
 class Agent():
     def __init__(self, modelname, gamma, epsilon, lr, input_dims, batch_size, n_actions,
-            max_mem_size=100000, eps_end=0.05, eps_dec=2.5e-6):
+            max_mem_size=100000, eps_end=0.05, eps_dec=1e-4):
 
         self.modelname = modelname
         self.gamma = gamma
@@ -96,16 +145,22 @@ class Agent():
         self.mem_cntr = 0
 
         if modelname == "MLP":
-            self.Q_eval = MLPQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims, 
+            self.Q_eval   = MLPQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims, 
                                     fc1_dims=256, fc2_dims=256)
             self.Q_target = MLPQNetwork(self.lr,n_actions=n_actions, input_dims=input_dims, 
                                     fc1_dims=256, fc2_dims=256)
 
         elif modelname == "CNN":
-            self.Q_eval = CNNQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims,
+            self.Q_eval   = CNNQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims,
                                     filter1=32, filter2=64, fc1n=512)
             self.Q_target = CNNQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims,
                                     filter1=32, filter2=64, fc1n=512)
+        
+        elif modelname == "VAE":
+            self.Q_eval   = VAEQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims,
+                                    filter1=32, filter2=64, K=18, fc1n=256)
+            self.Q_target = VAEQNetwork(self.lr, n_actions=n_actions, input_dims=input_dims,
+                                    filter1=32, filter2=64, K=18, fc1n=256)
         # Initialize the target network as the eval network
         self.Q_target.load_state_dict(self.Q_eval.state_dict())
 
