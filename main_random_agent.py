@@ -21,14 +21,6 @@ class RandomAgent():
     return action
 
 
-def render_dataset_img(img_dir, img_id):
-
-  img = np.load(img_dir + str(img_id) +".npy")
-  plt.imshow(img[0,:,:])
-  return 1
-
-
-
 
 if __name__ == "__main__":
   
@@ -62,7 +54,7 @@ if __name__ == "__main__":
         img = np.sum(img, axis=2, dtype=np.float32)/765
         observation = np.concatenate((np.expand_dims(img,0), observation[:-1,:,:])) # New frame + 2 newest frames
         
-        if len(os.listdir(img_dataset_loc)) > images_to_collect:
+        if counter >= images_to_collect-1:
           break
         if np.random.rand(1) < 0.1 and initial_frames > num_frames:
           counter += 1
@@ -73,8 +65,3 @@ if __name__ == "__main__":
   np.save(img_dataset_loc + "dataset.npy", dataset)
   print(str(images_to_collect), " images have been collected.")
 
-
-  render_dataset_img(img_dataset_loc, 1)
-
-
-  render_dataset_img(img_dataset_loc, 2)
