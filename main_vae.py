@@ -183,20 +183,33 @@ def set_seed(seed=None, seed_torch=True):
 
     print(f'Random seed {seed} has been set.')
 
+def Transform_Image(_img, _n):
+    # Highlight what we care about -- lunar lander.
+    _x = _img
+    _x = _x * (_x < 0.8) * (_x > 0.4) # Mask anything outside 0.4 < _x < 0.8 
+    _x[50:52, 32:34] = 0 # remove flags
+    _x[50:52, 48:50] = 0
+    _y = _n * _x + _img # highlight items between region, add to original image.
+
+    return _y
+
 
 if __name__ == "__main__":
     set_seed(seed=2021)
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     path = 'dataset/dataset.npy'
+
     LOAD_MODEL = False
     TRAIN = True
     SAVE = True
     PLOT = True
 
     X = np.load(path, allow_pickle=True)
-    X = torch.tensor(X, dtype=torch.float32)
-    X = torch.diff(X, dim=1)
+    for i in range(len(X)):
+        for j in range(len(X[0])):
+            X[i,j] = Transform_Image(X[i,j], 3)
 
+    X = torch.tensor(X, dtype=torch.float32)
     n_samples = X.shape[0]
     training_samples = round(n_samples * 0.8)
 
